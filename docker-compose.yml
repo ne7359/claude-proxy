@@ -10,8 +10,8 @@ services:
     environment:
       - NODE_ENV=production
     volumes:
-      - ./logs:/app/logs
-      - ./.env:/app/.env
+      - ./logs:/app/logs:rw
+      - ./.env:/app/.env:rw
     networks:
       - proxy-network
     healthcheck:
