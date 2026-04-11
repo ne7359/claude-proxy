@@ -15,7 +15,7 @@ COPY src/ ./src/
 
 # 4. 执行构建命令（例如编译 TypeScript、打包等）
 # 如果您的项目不需要构建步骤，可以注释掉下面这行
-RUN npm run build
+# RUN npm run build
 
 # --- 阶段 2: 生产阶段 ---
 # 此阶段只负责运行已经构建好的应用
