@@ -11,7 +11,7 @@ services:
       - NODE_ENV=production
     volumes:
       - ./logs:/app/logs:rw
-      - ./.env:/app/.env:rw
+      # 已移除: ./.env:/app/.env:rw
     networks:
       - proxy-network
     healthcheck:
@@ -19,7 +19,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 40s # 增加启动宽限期，防止启动慢导致健康检查失败
+
+    # 新增日志轮转配置，防止日志文件过大
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   proxy-network:
