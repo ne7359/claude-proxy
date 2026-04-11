@@ -1,0 +1,25 @@
+services:
+  claude-raw-proxy:
+    build: .
+    container_name: claude-raw-proxy
+    restart: unless-stopped
+    ports:
+      - "8788:8788"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - proxy-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8788/debug"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  proxy-network:
+    driver: bridge
