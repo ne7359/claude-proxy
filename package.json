@@ -1,0 +1,19 @@
+{
+  "name": "claude-proxy-unified",
+  "version": "1.0.0",
+  "description": "Claude API代理 + 环境变量管理统一服务",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node --test --experimental-test-isolation=none"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
