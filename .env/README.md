@@ -112,14 +112,3 @@ MAX_SESSIONS=200
 1. 在`server.js`中更新`parseEnvFile`和`generateEnvContent`函数
 2. 在前端HTML中添加对应的表单字段
 3. 更新API验证逻辑
-
-## 故障排除
-
-
-## 许可证
-
-MIT License
-
-## 贡献
-
-欢迎提交Issue和Pull Request改进本项目。
