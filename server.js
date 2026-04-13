@@ -10,9 +10,6 @@ import { createApp as createProxyApp } from './proxy/src/app.js';
 import { loadRuntimeConfig } from './proxy/src/env.js';
 import { renderDebugPage } from './proxy/src/debug-page.js';
 
-// 导入.env管理功能
-import { parseEnvFile, generateEnvContent } from './proxy/src/env.js';
-
 // 创建Express应用用于UI和管理API
 const app = express();
 
@@ -21,9 +18,9 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
-// .env 文件路径配置
-const ENV_FILE_PATH = process.env.ENV_FILE_PATH || path.join(__dirname, '.env', '.env');
-const CONFIG_STORAGE_DIR = process.env.CONFIG_STORAGE_DIR || path.join(__dirname, '.env', 'config-storage');
+// .env 文件路径配置 - 统一保存到proxy/.env供代理使用
+const ENV_FILE_PATH = process.env.ENV_FILE_PATH || path.join(process.cwd(), 'proxy', '.env');
+const CONFIG_STORAGE_DIR = process.env.CONFIG_STORAGE_DIR || path.join(process.cwd(), '.env', 'config-storage');
 
 // 确保配置存储目录存在
 if (!fs.existsSync(CONFIG_STORAGE_DIR)) {
@@ -34,42 +31,37 @@ if (!fs.existsSync(CONFIG_STORAGE_DIR)) {
 const CONFIG_JSON_PATH = path.join(CONFIG_STORAGE_DIR, 'configs.json');
 
 /**
- * 解析 .env 文件内容（增强版）
+ * 解析 .env 文件内容
  */
 function parseEnvFileContent(content) {
-    const config = {
-        upstreamUrl: '',
-        apiKey: '',
-        port: 8788,
-        maxSessions: 200
-    };
-
+    const parsed = {};
     const lines = content.split('\n');
-    for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith('#')) continue;
 
-        const match = trimmed.match(/^([^=]+)=(.*)$/);
-        if (match) {
-            const key = match[1].trim();
-            const value = match[2].trim();
+    for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith('#')) continue;
 
-            switch (key) {
-                case 'UPSTREAM_BASE_URL':
-                    config.upstreamUrl = value;
-                    break;
-                case 'UPSTREAM_API_KEY':
-                    config.apiKey = value;
-                    break;
-                case 'PORT':
-                    config.port = parseInt(value) || 8788;
-                    break;
-                case 'MAX_SESSIONS':
-                    config.maxSessions = parseInt(value) || 200;
-                    break;
-            }
+        const separator = line.indexOf('=');
+        if (separator === -1) continue;
+
+        const key = line.slice(0, separator).trim();
+        let value = line.slice(separator + 1).trim();
+
+        // 移除引号
+        if ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))) {
+            value = value.slice(1, -1);
         }
+
+        parsed[key] = value;
     }
+
+    const config = {
+        upstreamUrl: parsed.UPSTREAM_BASE_URL || '',
+        apiKey: parsed.UPSTREAM_API_KEY || '',
+        port: parseInt(parsed.PORT) || 8788,
+        maxSessions: parseInt(parsed.MAX_SESSIONS) || 200
+    };
 
     return config;
 }
@@ -197,11 +189,61 @@ function readConfig() {
 /**
  * 保存配置到 .env 文件
  */
+// 代理应用实例
+let proxyAppInstance = null;
+let proxyServer = null;
+
+/**
+ * 启动/重启代理服务（作为子应用）
+ */
+function startProxyServer() {
+    try {
+        // 读取当前配置
+        const config = readConfig();
+
+        if (!config.upstreamUrl || !config.apiKey) {
+            console.log('⚠️  配置不完整，跳过代理启动');
+            return { success: false, message: '配置不完整，请先设置UPSTREAM_BASE_URL和UPSTREAM_API_KEY' };
+        }
+
+        console.log('🚀 创建Claude代理服务...');
+        console.log('  上游地址:', config.upstreamUrl);
+        console.log('  最大会话数:', config.maxSessions);
+
+        // 创建代理应用
+        proxyAppInstance = createProxyApp({
+            upstreamBaseUrl: config.upstreamUrl,
+            upstreamApiKey: config.apiKey,
+            maxSessions: config.maxSessions,
+        });
+
+        proxyServer = proxyAppInstance.server;
+
+        console.log(`✅ Claude代理服务已创建`);
+        console.log(`   API端点: http://localhost:8788/v1/messages`);
+        console.log(`   调试页面: http://localhost:8788/debug`);
+
+        return { success: true };
+    } catch (error) {
+        console.error('❌ 创建代理服务失败:', error);
+        return { success: false, message: error.message };
+    }
+}
+
 function saveConfig(config) {
     try {
         const content = generateEnvFileContent(config);
         fs.writeFileSync(ENV_FILE_PATH, content, 'utf-8');
-        return { success: true };
+
+        // 保存后尝试启动代理服务
+        console.log('⚡ 配置已保存，尝试启动/重启代理服务...');
+        const proxyResult = startProxyServer();
+
+        return {
+            success: true,
+            proxyStarted: proxyResult.success,
+            proxyMessage: proxyResult.message
+        };
     } catch (error) {
         console.error('保存 .env 文件失败:', error);
         return { success: false, message: error.message };
@@ -209,7 +251,7 @@ function saveConfig(config) {
 }
 
 // UI静态文件（从.env/vue-ui/public复制）
-const UI_PUBLIC_DIR = path.join(__dirname, '.env', 'vue-ui', 'public');
+const UI_PUBLIC_DIR = path.join(process.cwd(), '.env', 'vue-ui', 'public');
 
 if (fs.existsSync(UI_PUBLIC_DIR)) {
     app.use('/ui', express.static(UI_PUBLIC_DIR));
@@ -273,8 +315,14 @@ app.post('/api/config', (req, res) => {
     console.log('  UPSTREAM_BASE_URL:', config.upstreamUrl);
     console.log('  PORT:', config.port);
     console.log('  MAX_SESSIONS:', config.maxSessions);
+    console.log(`  保存到: ${ENV_FILE_PATH}`);
 
-    res.json({ success: true });
+    res.json({
+        success: true,
+        message: '配置已保存',
+        proxyStarted: saveResult.proxyStarted,
+        proxyMessage: saveResult.proxyMessage
+    });
 });
 
 // 获取所有配置列表
@@ -304,6 +352,20 @@ app.delete('/api/configs/:id', (req, res) => {
     }
 });
 
+// 代理重启API
+app.post('/api/proxy/restart', (req, res) => {
+    console.log('🔄 收到手动重启代理服务请求');
+    const result = startProxyServer();
+    res.json(result);
+});
+
+app.get('/api/proxy/status', (req, res) => {
+    res.json({
+        running: proxyServer !== null,
+        config: readConfig()
+    });
+});
+
 // UI路由
 app.get('/ui', (req, res) => {
     if (fs.existsSync(path.join(UI_PUBLIC_DIR, 'index.html'))) {
@@ -316,7 +378,10 @@ app.get('/ui', (req, res) => {
 // 加载运行时配置
 let runtimeConfig;
 try {
-    runtimeConfig = loadRuntimeConfig();
+    // 指定正确的.env文件路径
+    runtimeConfig = loadRuntimeConfig({
+        envPath: path.join(process.cwd(), 'proxy', '.env')
+    });
 } catch (error) {
     console.error('加载运行时配置失败:', error);
     runtimeConfig = {
@@ -327,59 +392,75 @@ try {
     };
 }
 
-// 创建proxy应用
-const proxyApp = createProxyApp({
-    upstreamBaseUrl: runtimeConfig.upstreamBaseUrl,
-    upstreamApiKey: runtimeConfig.upstreamApiKey,
-    maxSessions: runtimeConfig.maxSessions,
-});
-
-// 代理API路由转发到proxy应用
-const proxyServer = proxyApp.server;
-
 // 创建一个统一的HTTP服务器
 const server = http.createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
-    // 处理UI和管理API
+    // 路由分发
     if (url.pathname.startsWith('/api/config') ||
+        url.pathname.startsWith('/api/proxy') ||
         url.pathname.startsWith('/ui') ||
-        url.pathname === '/') {
+        url.pathname === '/' ||
+        url.pathname === '/health') {
+        // 配置管理和UI请求
         return app(req, res);
-    }
-
-    // 处理proxy调试页面
-    if (req.method === 'GET' && (url.pathname === '/debug' || url.pathname === '/debug/api/sessions')) {
+    } else if (proxyServer) {
+        // Claude代理请求 - 转发到代理服务器
         return proxyServer.emit('request', req, res);
-    }
+    } else {
+        // 代理服务未启动
+        if (req.method === 'POST' && url.pathname === '/v1/messages') {
+            res.writeHead(503, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                error: 'Claude代理服务未启动',
+                message: '请先通过配置界面设置API密钥并保存配置'
+            }));
+            return;
+        }
+        if (req.method === 'GET' && url.pathname === '/debug') {
+            res.writeHead(503, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                error: 'Claude代理服务未启动',
+                message: '请先启动代理服务'
+            }));
+            return;
+        }
 
-    // 处理Claude API请求
-    if (req.method === 'POST' && url.pathname === '/v1/messages') {
-        return proxyServer.emit('request', req, res);
+        // 默认404
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Not found' }));
     }
-
-    // 默认404
-    res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Not found' }));
 });
 
-// 启动服务器
-const PORT = runtimeConfig.port;
+// 启动主服务器（Web配置界面和API）
+const PORT = 8788;
 server.listen(PORT, '0.0.0.0', () => {
     console.log('╔══════════════════════════════════════════════════════════════════════════════════╗');
-    console.log('║                         统一代理服务 + 环境变量管理器已启动                       ║');
+    console.log('║                        配置管理服务已启动                                        ║');
     console.log('╠══════════════════════════════════════════════════════════════════════════════════╣');
-    console.log(`║  代理服务地址: http://localhost:${PORT}                                         ║`);
-    console.log(`║  UI管理界面: http://localhost:${PORT}/ui                                        ║`);
-    console.log(`║  调试页面: http://localhost:${PORT}/debug                                       ║`);
-    console.log('║  API端点:                                                                       ║');
-    console.log(`║    • /v1/messages     - Claude API代理                                          ║`);
-    console.log(`║    • /api/config      - 获取当前配置                                            ║`);
-    console.log(`║    • /api/configs     - 获取所有配置列表                                        ║`);
+    console.log(`║  配置管理界面: http://localhost:${PORT}/ui                                      ║`);
+    console.log(`║  配置API: http://localhost:${PORT}/api/config                                   ║`);
     console.log('║                                                                                 ║');
-    console.log('║  当前配置:                                                                       ║');
+    console.log('║  API端点:                                                                       ║');
+    console.log(`║    • GET  /api/config      - 获取当前配置                                        ║`);
+    console.log(`║    • POST /api/config      - 保存并激活配置                                      ║`);
+    console.log(`║    • GET  /api/configs     - 获取所有配置列表                                    ║`);
+    console.log(`║    • POST /api/configs/:id/activate - 激活特定配置                               ║`);
+    console.log(`║    • POST /api/proxy/restart - 手动重启Claude代理                                ║`);
+    console.log('║                                                                                 ║');
+    console.log('║  当前配置（从proxy/.env读取）:                                                   ║');
     console.log(`║    • UPSTREAM_BASE_URL: ${runtimeConfig.upstreamBaseUrl}                       ║`);
     console.log(`║    • PORT: ${runtimeConfig.port}                                                ║`);
     console.log(`║    • MAX_SESSIONS: ${runtimeConfig.maxSessions}                                 ║`);
     console.log('╚══════════════════════════════════════════════════════════════════════════════════╝');
+    console.log('');
+    console.log('⚠️  重要说明：');
+    console.log('   1. 配置管理服务已启动');
+    console.log('   2. Claude代理服务尚未启动');
+    console.log('   3. 请先通过Web界面配置正确的API密钥');
+    console.log('   4. 然后通过以下方式启动Claude代理：');
+    console.log('      - 方式1: 在Web界面保存配置后自动启动');
+    console.log('      - 方式2: 调用API: POST /api/proxy/restart');
+    console.log('      - 方式3: 手动重启整个服务');
+    console.log('');
 });

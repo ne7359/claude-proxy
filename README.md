@@ -2,6 +2,30 @@
 
 一个集成的解决方案，将Claude API代理服务和环境变量Web管理工具结合在一个统一的应用中。
 
+  ✅ 核心功能
+
+  - 统一端口8788 - 单端口提供所有服务
+  - Web配置管理 - 可视化界面管理环境变量
+  - Claude API代理 - OpenAI兼容格式转换
+  - 配置持久化 - 激活/未激活配置分别存储
+  - Docker支持 - 容器化部署
+
+  ✅ 技术实现
+
+  - Express + Vue - 现代Web技术栈
+  - ESM模块 - 支持最新的Node.js特性
+  - 多阶段构建 - 优化Docker镜像大小
+  - 健康检查 - 自动监控服务状态
+
+  ✅ 部署选项
+
+  1. 本地运行: node server.js
+  2. Docker单容器: docker run -p 8788:8788 ...
+  3. Docker Compose: docker-compose up -d
+  4. 生产部署 - 支持K8s、云平台等
+
+  📞 后续支持 🎊🚀
+
 ## 功能特性
 
 ✅ **Claude API代理** - 将Anthropic API格式转换为OpenAI兼容格式
