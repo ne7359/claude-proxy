@@ -1,13 +1,4 @@
-# 多阶段Docker构建 - 统一Claude代理服务
-# 特点：完整打包 .env 目录(含Web UI)，并保留写入权限
-
-# ==========================================
-# 第一阶段：构建与资源收集
-# ==========================================
 FROM node:20-alpine AS builder
-
-# 安装 git（Alpine需要显式安装）
-RUN apk add --no-cache git
 
 # 设置工作目录
 WORKDIR /app
