@@ -1,0 +1,13 @@
+[
+  {
+    "id": "1775993084989",
+    "name": "nvidia",
+    "upstreamUrl": "https://integrate.api.nvidia.com/v1",
+    "apiKey": "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",
+    "port": 8788,
+    "maxSessions": 200,
+    "createdAt": "2026-04-12T11:24:44.989Z",
+    "updatedAt": "2026-04-12T11:24:44.989Z",
+    "active": true
+  }
+]
