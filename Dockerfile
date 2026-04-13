@@ -36,7 +36,7 @@ COPY --from=builder /app/proxy /app/proxy
 COPY --from=builder /app/.env /app/.env
 COPY --from=deps /app/node_modules /app/node_modules
 COPY --from=builder /app/package.json /app/package.json
-COPY --from=builder /app/server-unified.js /app/server.js
+COPY --from=builder /app/server.js /app/server.js
 
 # 创建必要的目录
 RUN mkdir -p /app/.env/config-storage && \
