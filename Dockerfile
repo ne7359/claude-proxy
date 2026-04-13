@@ -21,7 +21,7 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 
 # 复制依赖定义文件
-COPY package.json ./package.json
+COPY package.json ./app/
 
 # 安装生产依赖
 RUN npm install --production
