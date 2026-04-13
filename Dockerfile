@@ -1,7 +1,18 @@
 FROM node:20-alpine AS builder
+# 安装 git（Alpine需要显式安装）
+RUN apk add --no-cache git
+
+# 构建参数：仓库地址和分支
+ARG REPO_URL=https://github.com/ne7359/claude-proxy.git
+ARG BRANCH=main
 
 # 设置工作目录
 WORKDIR /app
+
+# 从官方仓库克隆源码
+# 使用 --depth 1 只拉取最新提交，减小体积
+# 使用 -b 指定分支
+RUN git clone --depth 1 -b ${BRANCH} ${REPO_URL} .
 
 # 安装依赖
 RUN npm install --omit=dev
