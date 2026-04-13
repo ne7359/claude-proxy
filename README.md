@@ -58,39 +58,6 @@
 
 ## 快速开始
 
-### 使用Docker Compose（推荐）
-
-1. 创建`.env`文件设置API密钥：
-```bash
-echo "ANTHROPIC_API_KEY=your-actual-api-key" > .env
-```
-
-2. 启动服务：
-```bash
-docker-compose up -d
-```
-
-3. 访问服务：
-   - API代理: `http://localhost:8788/v1/messages`
-   - 配置管理UI: `http://localhost:8788/ui`
-   - 调试页面: `http://localhost:8788/debug`
-
-### 手动构建Docker镜像
-
-```bash
-# 构建镜像
-docker build -t claude-proxy-unified .
-
-# 运行容器
-docker run -d \
-  -p 8788:8788 \
-  -e ANTHROPIC_API_KEY=your-api-key \
-  -v $(pwd)/data/.env:/app/.env/.env \
-  -v $(pwd)/data/config-storage:/app/.env/config-storage \
-  --name claude-proxy \
-  claude-proxy-unified
-```
-
 ### 本地开发运行
 
 ```bash
@@ -158,64 +125,6 @@ MAX_SESSIONS=200
 - **激活/未激活分离** - 激活配置存储在.env文件，未激活配置存储在JSON文件
 - **批量操作** - 支持激活、编辑、删除配置
 - **实时同步** - 配置更新后立即生效，无需重启服务
-
-## Docker镜像优化
-
-- **多阶段构建** - 减少镜像体积
-- **最小化基础镜像** - 使用node:20-alpine
-- **非root用户运行** - 增强安全性
-- **健康检查** - 自动监控服务状态
-- **数据持久化** - 配置数据存储在卷中
-
-## 构建和部署
-
-### 构建镜像
-
-```bash
-# 使用默认配置
-docker build -t claude-proxy-unified .
-
-# 带构建参数
-docker build \
-  --build-arg NODE_ENV=production \
-  -t claude-proxy-unified:v1.0.0 .
-```
-
-### 推送到容器注册表
-
-```bash
-docker tag claude-proxy-unified your-registry/claude-proxy-unified:v1.0.0
-docker push your-registry/claude-proxy-unified:v1.0.0
-```
-
-## 故障排除
-
-### 常见问题
-
-1. **服务无法启动**
-   - 检查API密钥是否正确设置
-   - 检查端口8788是否被占用
-   - 查看Docker日志：`docker logs claude-proxy-unified`
-
-2. **配置不生效**
-   - 确保.env文件可写入
-   - 检查配置存储目录权限
-   - 重启服务使配置生效
-
-3. **健康检查失败**
-   - 等待启动完成（首次启动可能需要10秒）
-   - 检查服务是否正常运行
-   - 验证网络连接
-
-### 日志查看
-
-```bash
-# Docker Compose日志
-docker-compose logs -f
-
-# 单个容器日志
-docker logs -f claude-proxy-unified
-```
 
 ## 开发
 
