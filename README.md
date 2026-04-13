@@ -236,7 +236,3 @@ docker logs -f claude-proxy-unified
 1. 在 `server.js` 中更新 `parseEnvFileContent` 和 `generateEnvFileContent` 函数
 2. 在UI中添加对应的表单字段
 3. 更新API验证逻辑
-
-## 许可证
-
-MIT License
