@@ -1,0 +1,18 @@
+# 忽略依赖目录
+node_modules
+npm-debug.log
+
+# 忽略 Git 相关 (必须保留 .git 目录让 Docker 能扫描文件！)
+.git
+.gitignore
+
+# 忽略 IDE 配置
+.vscode
+*.swp
+.DS_Store
+
+# 忽略日志和本地环境
+logs
+*.log
+
+# 【重要】不要在这里写 "*" 或 ".*"，否则 Docker 会看不见你的代码！
