@@ -6,7 +6,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # 复制所有必要文件
-COPY package.json server-unified.js ./
+COPY package.json server.js ./
 COPY proxy/ ./proxy/
 COPY .env/ ./.env/
 
